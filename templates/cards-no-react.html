@@ -1,0 +1,104 @@
+{% extends 'base.html' %} {% block title %} Cards {% endblock %} {% block body
+%}
+<div>
+  <h2>Add New Trading Card</h2>
+
+  Name <input type="text" id="nameField" /> Skill
+  <input type="text" id="skillField" />
+  <button id="addCard">Add</button>
+
+  <h2>Trading Cards</h2>
+</div>
+
+<div id="container" class="grid"></div>
+{% endblock %} {% block js %}
+<script>
+  
+  function getCardData() {
+    // Get the up to date card data from Data Base.
+
+    fetch("/cards.json") //get card data from json file
+      .then((response) => response.json())
+      .then((data) => insertCardData(data));
+  }
+  //The purpose of this function (getCardData) is to retrieve the card data from the back end using JavaScript on the front end 
+  //to asynchronously make an HTTP request to our server. This kind of approach is part of what’s known as AJAX, 
+  //which is a general term that does not apply to any specific thing, but rather a set of techniques that allow us 
+  //to update the webpage without refreshing it. When the HTTP request returns from the server, the card data is inserted into the DOM.
+// Every time this function is called, this is what happens:
+    // 1. An HTTP request is sent to the route /cards.json
+    // 2. In /cards.json, the backend returns a list of JSON. 
+        //Right now, we are just using a dictionary for the data but in the future this could come from a database.
+    // 3. When the response returns, the function insertCardData is called.
+  
+  
+    const createCardAndAddToContainer = (name, skill, imgUrl) => { //jQuery inline arrow function
+    const cardElement = document.createElement("div");
+    cardElement.classList.add("card");
+    cardElement.innerHTML = `
+        <p>Name: ${name}</p>
+        <img src='${imgUrl}'>
+        <p>Skill: ${skill} </p>
+    `;
+    document.querySelector("#container").append(cardElement);
+  };
+
+  const insertCardData = (response) => { //calls in 'response' as argument from previous function on lines 21 and 22
+    // Once the data has been provided by the server,
+    // insert it into the page as an HTML string.
+    const listOfCards = response.cards;
+
+    const container = document.querySelector("#container"); //We select the container element on the page that is going to hold each trading card in the HTML.
+
+    // empty the container so it has no content
+    container.innerHTML = ""; // <----- empty container
+
+    for (const currentCard of listOfCards) {
+      if (!currentCard.imgUrl) { //if currentCard does not (!) have an image, then currentCard should be assigned placeholder image
+        currentCard.imgUrl = "/static/img/placeholder.png"; //placeholder image
+      }
+      createCardAndAddToContainer( //If card data is in json file, this loop is how it grabs the data and outputs it
+        currentCard.name,
+        currentCard.skill,
+        currentCard.imgUrl
+      ); //ABOVE FOR LOOP: We loop over each card in the response object, adding a <div> element for each card and children elements to hold the card name, skill, and image.
+    }
+  };
+
+  const addNewCard = (evt) => {
+    // Respond to the Add New Card form getting submitted.
+    // This is an event handling function.
+
+    // Get name that user typed in Name field.
+    const name = document.querySelector("#nameField").value;
+
+    // Get skill that user typed in Skill field.
+    const skill = document.querySelector("#skillField").value;
+
+    // Make a request to the server to add the card via the fetch
+    // the server sends us a response with the new card, lines 88-91
+    // We then add this card to the page, line 92 
+    fetch("/add-card", {
+      method: "POST", //we’re making an HTTP POST request with JavaScript to send the new card data to the server.
+      headers: {
+        "Content-Type": "application/json",
+      }, //getting python code from /add-card and that data needs to be changed to a string so HTML can use it. Then is JSON stringifies.
+      body: JSON.stringify({ name, skill }), //we package up that data into a tidy little JS object to make our code cleaner. Returns JSON data in form of a string
+    }).then((response) => {
+      response.json().then((jsonResponse) => { //grabbing JSON string
+        const name = jsonResponse.cardAdded.name;
+        const skill = jsonResponse.cardAdded.skill;
+        const imgUrl = "/static/img/placeholder.png";
+        createCardAndAddToContainer(name, skill, imgUrl); //see line 35 for createCardAndAddToContainer
+      }); //In the HTTP POST request, there’s an inline function (createCardAndAddToContainer(name, skill, imgUrl);). 
+      //This is the code that will run when the POST request has successfully finished, and we’ve added the new card.
+    });
+  }; // .stringify converts and object or value to a JSON string (line 86)
+
+  // Attach the addNewCard function to the 'Add' button click.
+  document.querySelector("#addCard").addEventListener("click", addNewCard);
+
+  // Get intial cards when page initially loads!
+  getCardData();
+</script>
+{% endblock %}
